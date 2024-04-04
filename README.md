@@ -29,6 +29,6 @@ To run the predictive models, navigate to the `scripts/` directory and execute t
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-##LLM usage
+## LLM usage
 
 This project used Large Language Models at paper.qmd. Some aspects of the code and essay were written with the help of Chat-GPT4 and the entire chat history is available in 'other/llm/usage.txt'
