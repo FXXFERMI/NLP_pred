@@ -1,0 +1,335 @@
+---
+title: "Forecasting Gridiron Success: A Statistical Approach to NFL Passing Efficiency"
+subtitle: "Analyzing and Predicting Passing EPA for Strategic Advantage in the 2023 Season"
+author: 
+  - Siqi Fei
+thanks: "Code and data are available at: <https://github.com/FXXFERMI/NLP_pred.git>."
+date: "March 28, 2024"
+date-format: long
+abstract: "This report presents predictive models to estimate NFL teams' passing efficiency for the second half of the 2023 season. Utilizing current season data, we evaluate models based on accuracy metrics like R-squared and RMSE. Our aim is to pinpoint the most reliable predictors for passing expected points added (passing_epa), vital for offensive strategy. The findings are intended to inform teams' tactical decisions as they prepare for the playoff push."
+format: pdf
+number-sections: true
+toc: true
+bibliography: references.bib
+header-includes:
+  \usepackage{placeins}
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+#### Workspace setup ####
+#install.packages("nflverse")
+#install.packages("tidymodels")
+library(tidyverse)
+library(tidymodels)
+library(modelsummary)
+library(nflverse)
+library(here)
+library(ggplot2)
+
+```
+
+# Introduction
+
+As the 2023 NFL season hits Week 10, the quest to fine-tune team strategies intensifies. This report introduces a set of predictive models aimed at projecting the passing efficiency for the remaining games, grounded in quarterback regular-season statistics sourced from the `nflverse` package [@citenflverse], a repository of NFL data designed for detailed analysis. Utilizing advanced statistical techniques and thorough performance evaluations, these models—evaluated by key metrics like R-squared and RMSE—are crafted to enhance game planning and competitive strategy, without risking data leakage. Here, we seek to identify the most reliable model to forecast passing expected points added (passing_epa), a critical measure of offensive success.
+
+The paper is organized into three sections. Following this introduction, @sec-data describes the data set and the rationale behind its selection, detailing the comprehensive NFL data harnessed from the `nflverse` package[@citenflverse] and its preparation for analysis. @sec-model outlines the statistical methods applied to analyze the data, explaining how each model was developed and the criteria used to evaluate their performance. @sec-results presents the key findings of the study, including model comparisons and their implications for predicting passing efficiency in the NFL. This structure facilitates a clear and logical flow of information, ensuring that readers can easily follow the progression from data collection to the concluding insights that inform future game strategies and underscore the utility of advanced analytics in sports.
+
+# Data {#sec-data}
+
+For this paper, we used data from the `nflverse` package [@citenflverse], a comprehensive repository for NFL data, providing a robust dataset of quarterback regular-season statistics for the 2023 NFL season. We worked with in R [@citeR], a language for statistical computing. The `tidyverse` suite [@citetidyverse], with its various packages like `ggplot2` [@citeggplot] and `dplyr` [@citedplyr], made handling the data easier and more precise. We summarized our model results using the `modelsummary` package [@citemodelsummary]. The tidymodels package [@citetidymodels] facilitated our modeling process, offering a unified framework for building, evaluating, and tuning our predictive models. The `here` package [@citehere] helped keep our files organized and our analysis reproducible.
+
+## Data Measurement
+
+In our study, data measurement and preparation played a pivotal role in ensuring the reliability and validity of our predictive models. Starting with a comprehensive dataset sourced and cleaned to specifically focus on passing expected points added (passing_epa) metrics for NFL quarterbacks up to Week 9 of the 2023 season, we employed a meticulous process to refine the data. This involved the exclusion of any entries with missing passing_epa values, a key measure indicative of a quarterback's on-field performance. Following the cleaning phase, the dataset was divided into two distinct sets: training data, encompassing records up to Week 9, used to build and fine-tune our models, and test data, consisting of weeks 10 through 18, reserved for validating the models' predictive accuracy. This strategic split, facilitated by R's `tidyverse` and `here` packages, was critical for evaluating the models' effectiveness in forecasting future performances without the risk of overfitting, thereby ensuring a robust analysis grounded in precise data measurement techniques.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+# load data
+clean_data <- read_csv(here("data/analysis_data/analysis_data.csv"))
+#split data
+set.seed(853)
+
+train_data <- clean_data %>%
+  filter(week <= 9)
+
+test_data <- clean_data %>%
+  filter(week >= 10)
+
+write_csv(train_data, here("data/analysis_data/train.csv"))
+write_csv(test_data, here("data/analysis_data/test.csv"))
+
+```
+
+# Model {#sec-model}
+
+In the model section of our study, we leveraged `tidymodels` to construct a series of linear regression models, each designed to explore the relationship between passing expected points added (passing_epa) and various performance metrics of NFL quarterbacks. Six distinct models were developed, examining passing_epa as a function of passing yards, completions, attempts, interceptions, passing touchdowns, and a composite model incorporating all these variables simultaneously. The use of linear regression, facilitated by setting the engine to `"lm"` in `tidymodels`, allowed for an analysis grounded in statistical theory, offering insights into how each performance metric independently, and in combination, predicts the passing efficiency of quarterbacks. Each model was trained using data from the first nine weeks of the 2023 NFL season, ensuring a robust foundation for forecasting future performances. The `modelsummary` function was then employed to compile and compare the results, offering a structured overview of the impact of each performance metric on passing_epa, thereby guiding our understanding of key factors contributing to quarterback success in the NFL.
+
+## Model set-up
+
+In this model, $y_i$ represents the passing expected points added (passing_epa) for an NFL quarterback, assumed to follow a Normal distribution with mean $\mu_i$ and standard deviation $\sigma$. The mean, $\mu_i$, is modeled as a linear combination of various performance metrics, where $\beta_1$ through $\beta_5$ represent the effects of passing yards, completions, attempts, interceptions, and passing touchdowns, respectively, on passing_epa. Each $x_{ij}$ denotes one of these metrics, quantifying its contribution to a quarterback's performance efficiency.
+
+```{=tex}
+\begin{align} 
+y_i|\mu_i,\sigma &\sim \mbox{Normal}(\mu_i, \sigma) \\
+\mu_i &= \beta_0 + \beta_1 x_{ij} + \beta_2 x_{ij} + \beta_3 x_{ij} + \beta_4 x_{ij} + \beta_5 x_{ij}  
+\end{align}
+```
+## Model Interpretation
+
+The model summary table [@tbl-modelresults] provides valuable insights into the influence of various performance metrics on a quarterback's passing expected points added (passing_epa). The coefficient for passing_yards suggests a positive impact on passing_epa, indicating that, as expected, an increase in passing yards is associated with higher expected points. However, interceptions have a notably negative effect, reflecting the substantial cost of turnovers to a team's offensive efficiency. The overall model, which includes all metrics, shows a substantial increase in explanatory power, as evidenced by the highest R-squared value, indicating that the combination of these factors offers a more comprehensive understanding of a quarterback's performance. Adjusted R-squared values also support this, suggesting that the model including all factors adjusts well for the number of predictors used. The lower RMSE for the comprehensive model further suggests a more accurate prediction of passing_epa when all variables are considered together.
+
+```{r}
+#| echo: false
+#| label: tbl-modelresults
+#| tbl-cap: "Relationship between passing_epa and Performance Metrics "
+#| warning: false
+train_model_1_tidymodels <-
+  linear_reg() |>
+  set_engine(engine = "lm") |>
+  fit(
+    passing_epa ~ passing_yards,
+    data = train_data
+  )
+
+train_model_2_tidymodels <-
+  linear_reg() |>
+  set_engine(engine = "lm") |>
+  fit(
+    passing_epa ~ completions,
+    data = train_data
+  )
+
+train_model_3_tidymodels <-
+  linear_reg() |>
+  set_engine(engine = "lm") |>
+  fit(
+    passing_epa ~ attempts,
+    data = train_data
+  )
+train_model_4_tidymodels <-
+  linear_reg() |>
+  set_engine(engine = "lm") |>
+  fit(
+    passing_epa ~ interceptions,
+    data = train_data
+  )
+
+train_model_5_tidymodels <-
+  linear_reg() |>
+  set_engine(engine = "lm") |>
+  fit(
+    passing_epa ~ passing_tds,
+    data = train_data
+  )
+
+train_model_6_tidymodels <-
+  linear_reg() |>
+  set_engine(engine = "lm") |>
+  fit(
+    passing_epa ~ passing_yards + completions+ attempts + interceptions + passing_tds,
+    data = train_data
+  )
+
+modelsummary(list("passing_yards" = train_model_1_tidymodels,
+                  "completions" = train_model_2_tidymodels,
+                  "attempts" = train_model_3_tidymodels,
+                  "interceptions" = train_model_4_tidymodels,
+                  "passing_tds" = train_model_5_tidymodels,
+                  "all" = train_model_6_tidymodels))
+```
+# Results {#sec-results}
+
+Based on the summary table [@tbl-modelresults], the decision to choose model includes all metrics, labeled as "all", is strongly supported by several statistical indicators. Notably, this model exhibits the highest R-squared value, which suggests that it explains a significantly larger proportion of the variance in passing expected points added (passing_epa) compared to the other models. Additionally, the Adjusted R-squared value remains high, indicating that the model's explanatory power is not simply due to an increased number of predictors but due to the meaningful contribution of each variable.
+
+Moreover, the Root Mean Square Error (RMSE) for this model is the lowest among all, pointing to its superior predictive accuracy and suggesting that it would likely produce the closest estimates to the actual passing_epa. The combination of passing yards, completions, attempts, interceptions, and passing touchdowns within `all` seems to capture a more holistic picture of a quarterback's performance factors, reflecting the intricate dynamics of NFL passing games.
+
+## Prediction
+
+
+```{r}
+#| echo: false
+#| eval: false
+#prediction: based on the model summary above, we choose train_model_6_tidymodels = "all"
+train_model_6_tidymodels |>
+  predict(new_data = test_data) |>
+  cbind(test_data) |>
+  slice(1:10)
+```
+The provided data summary reveals predictive insights for Week 10 of the NFL season, showcasing a side-by-side comparison of actual and predicted passing EPA values for a selection of quarterbacks. The predictions, closely mirroring the actual performance metrics, underscore the effectiveness of our predictive model, particularly evident in cases like D. Prescott, whose high passing EPA is accurately anticipated by the model. Some discrepancies, such as the underestimation for J. Winston and overestimation for G. Smith, highlight the model's limitations and point to areas for further refinement. Overall, the model demonstrates a strong predictive capability, suggesting that it can be a valuable tool for forecasting quarterback performance and informing strategic decisions in upcoming games.
+
+```{r}
+#| echo: false
+train_model_6_tidymodels |>
+  predict(new_data = test_data) |>
+  cbind(test_data) |>
+  select(player_name, season, recent_team, week, passing_epa, .pred) |>
+  rename(
+    PlayerName = player_name,
+    Season = season,
+    Team = recent_team,
+    Week = week,
+    PassingEPA = passing_epa,
+    PredictedEPA = .pred
+  ) |>
+  arrange(Week) |>
+  slice(1:10) 
+
+```
+
+The scatter plot[@fig-compare] presented here serves as a compelling visual affirmation of the predictive strength of our selected model 'all'. It illustrates a strong positive relationship between the actual passing expected points added (PassingEPA) and the predictions made by our model (PredictedEPA), signified by the clustering of points along the red line, which represents perfect prediction accuracy. This visual comparison highlights the model's capability to capture the nuances of NFL passing efficiency accurately and bolsters confidence in its use as a predictive tool for the remaining season's games. Notably, the close alignment along the line of unity underscores the model's precision, suggesting that it can be reliably used to guide strategic decisions in player and game analysis moving forward into the latter part of the season.
+```{r}
+#| echo: false
+#| label: fig-compare
+#| fig-cap: "corelation between Model 'all'"
+final_table <- train_model_6_tidymodels |>
+  predict(new_data = test_data) |>
+  cbind(test_data) |>
+  select(player_name, season, recent_team, week, passing_epa, .pred) |>
+  rename(
+    PlayerName = player_name,
+    Season = season,
+    Team = recent_team,
+    Week = week,
+    PassingEPA = passing_epa,
+    PredictedEPA = .pred
+  ) 
+
+final_table |>
+  ggplot(aes(x = PassingEPA, y = PredictedEPA)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
+```{r}
+#| echo: false
+#| eval: false
+#| label: fig-compare1
+#| fig-cap: "corelation between Model 'passing_yards'"
+final_table <- train_model_1_tidymodels |>
+  predict(new_data = test_data) |>
+  cbind(test_data) |>
+  select(player_name, season, recent_team, week, passing_epa, .pred) |>
+  rename(
+    PlayerName = player_name,
+    Season = season,
+    Team = recent_team,
+    Week = week,
+    PassingEPA = passing_epa,
+    PredictedEPA = .pred
+  ) 
+
+final_table |>
+  ggplot(aes(x = PassingEPA, y = PredictedEPA)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
+```{r}
+#| echo: false
+#| eval: false
+#| label: fig-compare2
+#| fig-cap: "corelation between Model 'completions'"
+final_table <- train_model_2_tidymodels |>
+  predict(new_data = test_data) |>
+  cbind(test_data) |>
+  select(player_name, season, recent_team, week, passing_epa, .pred) |>
+  rename(
+    PlayerName = player_name,
+    Season = season,
+    Team = recent_team,
+    Week = week,
+    PassingEPA = passing_epa,
+    PredictedEPA = .pred
+  ) 
+
+final_table |>
+  ggplot(aes(x = PassingEPA, y = PredictedEPA)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
+```{r}
+#| echo: false
+#| label: fig-compare3
+#| eval: false
+#| fig-cap: "corelation between Model 'attempts'"
+final_table <- train_model_3_tidymodels |>
+  predict(new_data = test_data) |>
+  cbind(test_data) |>
+  select(player_name, season, recent_team, week, passing_epa, .pred) |>
+  rename(
+    PlayerName = player_name,
+    Season = season,
+    Team = recent_team,
+    Week = week,
+    PassingEPA = passing_epa,
+    PredictedEPA = .pred
+  ) 
+
+final_table |>
+  ggplot(aes(x = PassingEPA, y = PredictedEPA)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
+```{r}
+#| echo: false
+#| eval: false
+#| label: fig-compare4
+#| fig-cap: "corelation between Model 'interceptions'"
+final_table <- train_model_4_tidymodels |>
+  predict(new_data = test_data) |>
+  cbind(test_data) |>
+  select(player_name, season, recent_team, week, passing_epa, .pred) |>
+  rename(
+    PlayerName = player_name,
+    Season = season,
+    Team = recent_team,
+    Week = week,
+    PassingEPA = passing_epa,
+    PredictedEPA = .pred
+  ) 
+
+final_table |>
+  ggplot(aes(x = PassingEPA, y = PredictedEPA)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
+```{r}
+#| echo: false
+#| eval: false
+#| label: fig-compare5
+#| fig-cap: "corelation between Model 'passing_tds'"
+final_table <- train_model_5_tidymodels |>
+  predict(new_data = test_data) |>
+  cbind(test_data) |>
+  select(player_name, season, recent_team, week, passing_epa, .pred) |>
+  rename(
+    PlayerName = player_name,
+    Season = season,
+    Team = recent_team,
+    Week = week,
+    PassingEPA = passing_epa,
+    PredictedEPA = .pred
+  ) 
+
+final_table |>
+  ggplot(aes(x = PassingEPA, y = PredictedEPA)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red")
+```
+## Conclusion
+In assessing the impact on passing expected points added (passing_epa), the data suggests that passing yards and touchdowns (passing_tds) generally have a strong positive influence, indicating that higher yardage and more touchdowns are predictive of better quarterback performance. Conversely, interceptions negatively affect passing_epa, reflecting the costly nature of turnovers. Attempts and completions also contribute positively to passing_epa, but their impact is less pronounced when compared to yards gained or touchdowns scored.
+
+As we move into the season's second half, the suggestion for enhancing passing_epa centers on strategic plays that maximize passing yards and touchdowns while minimizing interceptions. Focusing on efficient, high-yardage pass attempts and optimizing red-zone offense will be crucial. Quarterbacks must balance aggressive play with smart decision-making to prevent turnovers. Effective exploitation of defensive weaknesses and tailored play-calling to quarterback strengths will be key for teams aiming to boost their passing game and overall offensive success.
+
+\newpage
+
+# References
